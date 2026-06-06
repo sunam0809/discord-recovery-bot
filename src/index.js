@@ -1,6 +1,6 @@
 require('dotenv').config();
+const http = require('http');
 const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionFlagsBits } = require('discord.js');
-const { v4: uuidv4 } = require('uuid');
 const db = require('./database');
 const commands = require('./commands');
 
@@ -77,3 +77,17 @@ client.on('interactionCreate', async interaction => {
 });
 
 client.login(process.env.DISCORD_BOT_TOKEN);
+
+// Health check HTTP server (required for Render web service)
+const PORT = process.env.PORT || 3001;
+const server = http.createServer((req, res) => {
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({
+    status: 'ok',
+    bot: client.user ? client.user.tag : 'connecting...',
+    timestamp: new Date().toISOString(),
+  }));
+});
+server.listen(PORT, () => {
+  console.log(`✅ 헬스체크 서버: http://localhost:${PORT}`);
+});
