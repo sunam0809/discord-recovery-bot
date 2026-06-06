@@ -61,33 +61,49 @@ client.once('ready', async () => {
 });
 
 client.on('interactionCreate', async interaction => {
-  if (interaction.isChatInputCommand()) {
-    if (interaction.commandName === '인증창') {
-      await commands.handleVerifyPanel(interaction, db);
-    } else if (interaction.commandName === '복구키만들기') {
-      await commands.handleCreateRecoveryKey(interaction, db);
-    } else if (interaction.commandName === '복구키사용') {
-      await commands.handleUseRecoveryKey(interaction, db, client);
+  try {
+    if (interaction.isChatInputCommand()) {
+      if (interaction.commandName === '인증창') {
+        await commands.handleVerifyPanel(interaction, db);
+      } else if (interaction.commandName === '복구키만들기') {
+        await commands.handleCreateRecoveryKey(interaction, db);
+      } else if (interaction.commandName === '복구키사용') {
+        await commands.handleUseRecoveryKey(interaction, db, client);
+      }
     }
-  }
 
-  if (interaction.isButton() && interaction.customId === 'verify_button') {
-    await commands.handleVerifyButton(interaction, db);
+    if (interaction.isButton() && interaction.customId === 'verify_button') {
+      await commands.handleVerifyButton(interaction, db);
+    }
+  } catch (err) {
+    console.error('인터랙션 처리 오류:', err);
+    const msg = { content: '❌ 오류가 발생했습니다. 잠시 후 다시 시도하세요.', ephemeral: true };
+    try {
+      if (interaction.deferred || interaction.replied) {
+        await interaction.editReply(msg);
+      } else {
+        await interaction.reply(msg);
+      }
+    } catch (_) {}
   }
 });
 
+client.on('error', err => console.error('Discord 클라이언트 오류:', err));
+process.on('unhandledRejection', err => console.error('처리되지 않은 오류:', err));
+
 client.login(process.env.DISCORD_BOT_TOKEN);
 
-// Health check HTTP server (required for Render web service)
+// Health check HTTP server (Render는 HTTP 응답이 없으면 배포 실패 처리)
 const PORT = process.env.PORT || 3001;
 const server = http.createServer((req, res) => {
   res.writeHead(200, { 'Content-Type': 'application/json' });
   res.end(JSON.stringify({
     status: 'ok',
     bot: client.user ? client.user.tag : 'connecting...',
+    uptime: process.uptime(),
     timestamp: new Date().toISOString(),
   }));
 });
-server.listen(PORT, () => {
-  console.log(`✅ 헬스체크 서버: http://localhost:${PORT}`);
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`✅ 헬스체크 서버: http://0.0.0.0:${PORT}`);
 });
