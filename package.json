@@ -1,0 +1,16 @@
+{
+  "name": "discord-recovery-bot",
+  "version": "1.0.0",
+  "description": "Discord Recovery Bot with verification system",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.16.3",
+    "axios": "^1.7.9",
+    "dotenv": "^16.4.7",
+    "uuid": "^11.0.5"
+  }
+}
