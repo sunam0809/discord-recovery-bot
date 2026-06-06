@@ -1,7 +1,7 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const axios = require('axios');
 
-const WEB_URL = process.env.WEB_URL || 'https://discord-recovery-web.onrender.com';
+const WEB_URL = process.env.WEB_URL || 'https://discord-web-vvxf.onrender.com';
 
 async function handleVerifyPanel(interaction, db) {
   await interaction.deferReply({ ephemeral: true });
@@ -44,12 +44,21 @@ async function handleVerifyButton(interaction, db) {
   const settings = db.getGuildSettings(guildId);
 
   if (!settings) {
-    return interaction.reply({ content: '❌ 인증 설정이 없습니다. `/인증창` 명령어를 먼저 실행하세요.', ephemeral: true });
+    return interaction.reply({
+      content: '❌ 인증 설정이 없습니다. `/인증창` 명령어를 먼저 실행하세요.',
+      ephemeral: true,
+    });
   }
 
-  const authUrl = `https://discord.com/api/oauth2/authorize?client_id=${process.env.DISCORD_CLIENT_ID}&redirect_uri=${encodeURIComponent(process.env.DISCORD_REDIRECT_URI || WEB_URL + '/auth/callback')}&response_type=code&scope=identify%20guilds.join&state=${guildId}`;
+  const redirectUri = process.env.DISCORD_REDIRECT_URI || `${WEB_URL}/auth/callback`;
+  const authUrl =
+    `https://discord.com/api/oauth2/authorize` +
+    `?client_id=${process.env.DISCORD_CLIENT_ID}` +
+    `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+    `&response_type=code` +
+    `&scope=identify%20guilds.join` +
+    `&state=${guildId}`;
 
-  const { ButtonBuilder, ButtonStyle, ActionRowBuilder } = require('discord.js');
   const row = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setLabel('🔗 Discord로 인증하기')
@@ -82,7 +91,7 @@ async function handleCreateRecoveryKey(interaction, db) {
       '**복구키 (1회용):**\n```\n' + key + '\n```\n\n' +
       '📊 현재 인증된 멤버 수: **' + users.length + '명**\n\n' +
       '⚠️ 이 키는 **1회만** 사용 가능합니다. 안전하게 보관하세요!\n' +
-      '`/복구키사용` 명령어로 멤버를 복구할 수 있습니다.'
+      '`/복구키사용 키:복구키` 명령어로 멤버를 복구할 수 있습니다.'
     )
     .setColor(0x57F287)
     .setTimestamp();
@@ -92,7 +101,7 @@ async function handleCreateRecoveryKey(interaction, db) {
 
 async function handleUseRecoveryKey(interaction, db, client) {
   await interaction.deferReply({ ephemeral: true });
-  const key = interaction.options.getString('키');
+  const key = interaction.options.getString('키').trim();
   const targetGuildId = interaction.guild.id;
 
   const keyData = db.useRecoveryKey(key);
@@ -108,11 +117,6 @@ async function handleUseRecoveryKey(interaction, db, client) {
   const settings = db.getGuildSettings(targetGuildId);
   if (!settings) {
     return interaction.editReply({ content: '❌ 현재 서버에 인증 설정이 없습니다. `/인증창` 먼저 실행하세요.' });
-  }
-
-  const guild = client.guilds.cache.get(targetGuildId);
-  if (!guild) {
-    return interaction.editReply({ content: '❌ 서버를 찾을 수 없습니다.' });
   }
 
   let successCount = 0;
@@ -136,10 +140,11 @@ async function handleUseRecoveryKey(interaction, db, client) {
         }
       );
       successCount++;
-      await new Promise(r => setTimeout(r, 500));
     } catch (err) {
+      console.error(`유저 ${user.userId} 초대 실패:`, err.response?.data);
       failCount++;
     }
+    await new Promise(r => setTimeout(r, 600));
   }
 
   const embed = new EmbedBuilder()
